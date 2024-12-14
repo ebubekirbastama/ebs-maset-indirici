@@ -1,6 +1,7 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QMessageBox, QLabel
+import requests
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QMessageBox, QLabel, QLineEdit
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from selenium import webdriver
@@ -16,21 +17,26 @@ class ModernGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("EBS Manşet Resim İndirme Programı")
-        self.setGeometry(100, 100, 400, 300)
+        self.setGeometry(100, 100, 400, 400)
 
         self.driver = None
-
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
-
         self.layout = QVBoxLayout()
-
 
         self.title_label = QLabel("EBS Manşet Resim İndirme Programı")
         self.title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
         self.title_label.setAlignment(Qt.AlignCenter)
+
+        self.link_input = QLineEdit()
+        self.link_input.setPlaceholderText("Resim linkini buraya girin")
+        self.link_input.setStyleSheet("padding: 5px; font-size: 14px;")
+
+        self.download_and_upload_button = QPushButton("Resmi İndir ve Yükle")
+        self.download_and_upload_button.setStyleSheet(self.get_button_style())
+        self.download_and_upload_button.clicked.connect(self.download_and_upload_image)
 
         self.open_site_button = QPushButton("Siteyi Aç")
         self.open_site_button.setStyleSheet(self.get_button_style())
@@ -44,8 +50,9 @@ class ModernGUI(QMainWindow):
         self.exit_button.setStyleSheet(self.get_button_style())
         self.exit_button.clicked.connect(self.close_application)
 
-
         self.layout.addWidget(self.title_label)
+        self.layout.addWidget(self.link_input)
+        self.layout.addWidget(self.download_and_upload_button)
         self.layout.addWidget(self.open_site_button)
         self.layout.addWidget(self.screenshot_button)
         self.layout.addWidget(self.exit_button)
@@ -73,7 +80,43 @@ class ModernGUI(QMainWindow):
             self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
             self.driver.get("https://ebubekirbastama.com.tr/ebsmansetolusturici.html")
             WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "canvas-wrapper")))
-           
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Bir hata oluştu: {e}")
+
+    def download_and_upload_image(self):
+        image_url = self.link_input.text()
+        if not image_url:
+            QMessageBox.warning(self, "Uyarı", "Lütfen bir resim linki girin.")
+            return
+
+        try:
+            # Resmi indirme
+            response = requests.get(image_url, stream=True)
+            if response.status_code == 200:
+                image_path = os.path.join(os.getcwd(), "downloaded_image.png")
+                with open(image_path, "wb") as file:
+                    file.write(response.content)
+                #QMessageBox.information(self, "Başarılı", f"Resim indirildi: {image_path}")
+
+                # Resmi siteye yükleme
+                if not self.driver:
+                    QMessageBox.warning(self, "Uyarı", "Lütfen önce siteyi açın.")
+                    return
+
+                upload_input = self.driver.find_element(By.XPATH, "//*[@id='imageInput']")
+                upload_input.send_keys(image_path)
+
+                #QMessageBox.information(self, "Başarılı", "Resim siteye yüklendi.")
+
+                # İndirilen dosyayı silme
+                os.remove(image_path)
+                #QMessageBox.information(self, "Başarılı", "İndirilen resim dosyası silindi.")
+
+                # Otomatik ekran görüntüsü alma
+                self.capture_screenshot()
+
+            else:
+                QMessageBox.critical(self, "Hata", "Resim indirilemedi. Linki kontrol edin.")
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Bir hata oluştu: {e}")
 
@@ -89,7 +132,7 @@ class ModernGUI(QMainWindow):
             screenshot_path = os.path.join(os.getcwd(), "canvas_screenshot.png")
             canvas_wrapper.screenshot(screenshot_path)
 
-            cropped_path = os.path.join(os.getcwd(), "canvas_screenshot_cropped.png")
+            cropped_path = os.path.join(os.getcwd(), "EBSindirilenresim.png")
             with Image.open(screenshot_path) as img:
                 width, height = img.size
                 left = (width - 684) // 2 if width > 684 else 0
@@ -99,8 +142,8 @@ class ModernGUI(QMainWindow):
 
                 cropped_img = img.crop((left, top, right, bottom))
                 cropped_img.save(cropped_path)
-
-            QMessageBox.information(self, "Başarılı", f"Ekran görüntüsü kırpıldı ve kaydedildi: {cropped_path}")
+            os.remove(screenshot_path)
+            #QMessageBox.information(self, "Başarılı", f"Ekran görüntüsü kırpıldı ve kaydedildi: {cropped_path}")
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Bir hata oluştu: {e}")
 
