@@ -143,6 +143,7 @@ class ModernGUI(QMainWindow):
                 cropped_img = img.crop((left, top, right, bottom))
                 cropped_img.save(cropped_path)
             os.remove(screenshot_path)
+            self.driver.refresh()
             #QMessageBox.information(self, "Başarılı", f"Ekran görüntüsü kırpıldı ve kaydedildi: {cropped_path}")
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Bir hata oluştu: {e}")
