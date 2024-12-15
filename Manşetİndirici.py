@@ -42,9 +42,6 @@ class ModernGUI(QMainWindow):
         self.open_site_button.setStyleSheet(self.get_button_style())
         self.open_site_button.clicked.connect(self.open_website)
 
-        self.screenshot_button = QPushButton("Ekran Görüntüsü Al")
-        self.screenshot_button.setStyleSheet(self.get_button_style())
-        self.screenshot_button.clicked.connect(self.capture_screenshot)
 
         self.exit_button = QPushButton("Kapat")
         self.exit_button.setStyleSheet(self.get_button_style())
@@ -54,7 +51,7 @@ class ModernGUI(QMainWindow):
         self.layout.addWidget(self.link_input)
         self.layout.addWidget(self.download_and_upload_button)
         self.layout.addWidget(self.open_site_button)
-        self.layout.addWidget(self.screenshot_button)
+
         self.layout.addWidget(self.exit_button)
         self.central_widget.setLayout(self.layout)
 
@@ -112,41 +109,14 @@ class ModernGUI(QMainWindow):
                 os.remove(image_path)
                 #QMessageBox.information(self, "Başarılı", "İndirilen resim dosyası silindi.")
 
-                # Otomatik ekran görüntüsü alma
-                self.capture_screenshot()
+                save_button = self.driver.find_element(By.XPATH, "//*[@id='saveBtn']")
+                save_button.click()
 
             else:
                 QMessageBox.critical(self, "Hata", "Resim indirilemedi. Linki kontrol edin.")
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Bir hata oluştu: {e}")
 
-    def capture_screenshot(self):
-        if not self.driver:
-            QMessageBox.warning(self, "Uyarı", "Lütfen önce siteyi açın.")
-            return
-
-        try:
-            canvas_wrapper = self.driver.find_element(By.ID, "canvas-wrapper")
-            self.driver.execute_script("arguments[0].scrollIntoView(true);", canvas_wrapper)
-
-            screenshot_path = os.path.join(os.getcwd(), "canvas_screenshot.png")
-            canvas_wrapper.screenshot(screenshot_path)
-
-            cropped_path = os.path.join(os.getcwd(), "EBSindirilenresim.png")
-            with Image.open(screenshot_path) as img:
-                width, height = img.size
-                left = (width - 684) // 2 if width > 684 else 0
-                top = (height - 525) // 2 if height > 525 else 0
-                right = left + 684 if width > 684 else width
-                bottom = top + 525 if height > 525 else height
-
-                cropped_img = img.crop((left, top, right, bottom))
-                cropped_img.save(cropped_path)
-            os.remove(screenshot_path)
-            self.driver.refresh()
-            #QMessageBox.information(self, "Başarılı", f"Ekran görüntüsü kırpıldı ve kaydedildi: {cropped_path}")
-        except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Bir hata oluştu: {e}")
 
     def close_application(self):
         if self.driver:
